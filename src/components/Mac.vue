@@ -1,10 +1,11 @@
 <template>
   <div class="popup" v-if="openEdit">
+    
+    <v-progress-circular class="loader" v-show="circular" color="primary" indeterminate :size="70"></v-progress-circular>
     <div class="popup-inner">
       <div v-if="items" class="edit-form mt-3 mx-auto">
         <p class="headline">Edit MAC address</p>
-
-        <v-form ref="form" lazy-validation>
+        <v-form :disabled="circular">
           <v-text-field
             v-model="items.Value"
             :rules="[(v) => !!v || 'MAC is required']"
@@ -19,21 +20,50 @@
             required
           ></v-text-field>
 
-          <v-btn color="primary" @click="updateTutorial">
-            Update
-          </v-btn>
-          <v-btn color="light" class="ml-2" to="/Mac" @click="$emit('close')">
-            close
-          </v-btn>
-        </v-form>
+          <v-select
+            v-model="items.Device_status"
+            label="Choose a type"
+            :rules="[(v) => !!v || 'Type is required']"
+            :items="['Main', 'TEMP']"
+            required
+          ></v-select>
 
-        <p v-for="mes in $store.state.message" :key="mes" class="mt-3">
-          {{ mes }}
-        </p>
+          <v-text-field
+            v-show="items.Device_status == 'TEMP' "
+            v-model="expireDate"
+            :rules="[(v) => !!v || 'Duration is required']"
+            label="Duration"
+            required
+            type="date"
+          ></v-text-field>
+
+          <v-row justify="center" >
+            <v-col cols="auto">
+              <v-btn color="primary" @click="updateTutorial" :disabled="circular">
+                Update
+              </v-btn>
+            </v-col>
+            <v-col cols="auto">
+              <v-btn  @click="$emit('close'), refresh()">
+                close
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-form>
+        <v-row justify="center" >
+          <p v-for="mes in $store.state.message" :key="mes" >
+            {{ mes }}
+          </p>
+        </v-row>
       </div>
 
       <div v-else>
-        <p>Please click on a MAC List...</p>
+        <p>Please reload a MAC List...</p>
+        <v-row justify="center" >
+            <v-btn  @click="$emit('close'), refresh()">
+              close
+            </v-btn>
+        </v-row>
       </div>
     </div>
   </div>
@@ -41,6 +71,7 @@
 
 <script>
 import MacDataService from "@/services/MacDataService";
+import moment from 'moment';
 
 export default {
   name: "Mac",
@@ -51,19 +82,24 @@ export default {
     return {
       item: null,
       message: "",
+      circular: false,
+      expireDate: null
     };
   },
+
   watch: {
-    openEdit(newValue) {
-      console.log(newValue, "haha");
+    openEdit() {
+      this.expireDate = this.dateFormater(this.items.expire_date)
     },
   },
   methods: {
     getTutorial(id) {
+      this.circular = true;
       MacDataService.get(id)
         .then((response) => {
           this.item = response.data;
           this.title = response.data;
+          this.circular = false;
         })
         .catch((e) => {
           console.log(e);
@@ -71,15 +107,21 @@ export default {
     },
 
     updateTutorial() {
+      this.message = "";
+      this.circular = true;
       var formData = new FormData();
-      formData.append("id", this.items.id);
-      formData.append("mac", this.items.Value);
-      formData.append("descr", this.items.Descr);
+      if (this.items.id && this.items.Value && this.items.Descr && this.items.Device_status) {
+        formData.append("id", this.items.id);
+        formData.append("mac", this.items.Value);
+        formData.append("descr", this.items.Descr);
+        formData.append("device_status", this.items.Device_status);
+      }
+      if (this.items.Device_status == "TEMP") {
+        formData.append("expire_date", this.expireDate);
+      }
 
-      console.log("minii update", formData);
       MacDataService.update(formData)
         .then((response) => {
-          console.log(response.data);
 
           if (response.data.status === "success") {
             this.message = ["Updated successfully!"];
@@ -91,12 +133,28 @@ export default {
             ];
             this.$store.commit("setmessage", this.message);
           }
+          this.circular = false;
         })
         .catch((e) => {
           console.log(e);
+          this.$store.commit("setmessage", "Хүсэлт__амжилтгүй");
+          this.circular = false;
         });
     },
+
+    refresh() {
+      this.message = "";
+      this.$store.commit("setmessage", []);
+    },
+
+    dateFormater(value) {
+      if (value) {
+          return moment(String(value)).format('YYYY-MM-DD');
+      }
   },
+  },
+
+
 
   mounted() {
     // this.message = "";

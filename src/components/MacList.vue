@@ -1,7 +1,6 @@
 <template>
   <v-row
-    align="center"
-    class="list px-3 mx-auto tw-w-[100%] sm:tw-w-[100%] md:tw-w-[100%] lg:tw-w-[70%]"
+    class="list px-3 mx-auto tw-w-[100%] sm:tw-w-[100%] md:tw-w-[100%] lg:tw-w-[85%]"
   >
     <AddMac :open="open" @close="open = false" />
     <Mac :openEdit="openEdit" :items="editItem" @close="openEdit = false" />
@@ -28,7 +27,7 @@
       ></v-text-field>
     </v-col>
 
-    <v-col cols="12" md="4">
+    <v-col cols="12" md="4" class="mt-2">
       <v-btn small @click="searchTitle">
         Search
       </v-btn>
@@ -36,15 +35,16 @@
         add
       </v-btn>
     </v-col>
-
     <v-col cols="12" sm="12">
+      <v-progress-linear indeterminate v-show="lineLoader"></v-progress-linear>
       <v-card class="mx-auto" tile>
         <v-card-title>List</v-card-title>
 
+        
+        <!-- disable-pagination -->
         <v-data-table
           :headers="headers"
           :items="tutorials"
-          disable-pagination
           :hide-default-footer="false"
         >
           <template v-slot:[`item.actions`]="{ item }">
@@ -77,6 +77,7 @@ export default {
   name: "mac-list",
   data() {
     return {
+      lineLoader: false,
       delete_pop: false,
       id: null,
       value: null,
@@ -90,6 +91,8 @@ export default {
         { text: "Username", value: "Username", sortable: false },
         { text: "Attribute", value: "Attribute", sortable: false },
         { text: "OP", value: "op", sortable: false },
+        { text: "Type", value: "Device_status", sortable: false },
+        { text: "Duration", value: "expire_date", sortable: false },
         { text: "Value", value: "Value", sortable: false },
         { text: "Description", value: "Descr", sortable: false },
         { text: "Action", value: "actions", sortable: false },
@@ -97,7 +100,6 @@ export default {
     };
   },
   created: function() {
-    // console.log(localStorage.getItem("user"));
     if (!localStorage.getItem("user")) {
       this.$router.push("/");
     } else {
@@ -106,12 +108,15 @@ export default {
   },
   methods: {
     retrieveTutorials() {
+      this.lineLoader = true;
       MacDataService.getAll()
         .then((response) => {
           this.tutorials = response.data.list.map(this.getDisplayTutorial);
+          this.lineLoader = false;
         })
         .catch((e) => {
           console.log(e);
+          this.lineLoader = false;
         });
     },
 
@@ -120,19 +125,23 @@ export default {
     },
 
     searchTitle() {
+      this.lineLoader = true;
       MacDataService.findByTitle(this.Username)
         .then((response) => {
-          this.tutorials = response.data.list.map(this.getDisplayTutorial);
+          this.tutorials = response.data.list.map(this.getDisplayTutorial);  
         })
         .catch((e) => {
           console.log(e);
+          this.lineLoader = false;
+        }).finally(() => {
+          this.lineLoader = false;
         });
     },
 
-    editTutorial(items) {
+    editTutorial(item) {
       this.$store.commit("setmessage", []);
       this.openEdit = true;
-      this.editItem = items;
+      this.editItem = item;
 
       // this.$router.push({
       //   params: { id: items.id, items },
@@ -141,21 +150,21 @@ export default {
       // });
     },
     deleteTutorial() {
-      // console.log();
+      this.lineLoader = true;
       var formData = new FormData();
       formData.append("id", this.id);
       MacDataService.delete(formData)
-        .then((response) => {
-          console.log("minii delete", response.data);
+        .then(() => {
+          this.lineLoader = false;
           this.refreshList();
         })
         .catch((e) => {
           console.log(e);
+          this.lineLoader = false;
         });
     },
 
     getDisplayTutorial(mac) {
-      // console.log(mac);
       return {
         id: mac.id,
         ID: mac.id.length > 30 ? mac.id.substr(0, 30) + "..." : mac.id,
@@ -169,8 +178,16 @@ export default {
             : mac.attribute,
         op: mac.op.length > 30 ? mac.op.substr(0, 30) + "..." : mac.op,
         Value:
-          mac.value.length > 30 ? mac.value.substr(0, 30) + "..." : mac.value,
+          mac.value.length > 30 
+            ? mac.value.substr(0, 30) + "..." 
+            : mac.value,
         Descr: mac.descr,
+        expire_date: mac.expire_date,
+        Device_status: mac.Device_status,
+        // Expire_date: 
+        //   mac.expire_date.length > 30
+        //       ? mac.expire_date.substr(0, 15) + "..."
+        //       : mac.expire_date,
       };
     },
   },

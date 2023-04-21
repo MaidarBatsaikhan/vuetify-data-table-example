@@ -1,10 +1,11 @@
 <template>
   <div class="submit-form mt-10 mx-auto">
-    <p class="headline">Login</p>
+    <p class="headline mx-4">Login</p>
 
     <div>
       <v-form @submit.prevent="LoginCheck()" ref="form" lazy-validation>
         <v-text-field
+        class="mx-4"
           v-model="tutorial.username"
           :rules="[(v) => !!v || 'Нэвтрэх нэрээ оруулна уу']"
           label="Нэвтрэх нэр"
@@ -12,16 +13,21 @@
         ></v-text-field>
 
         <v-text-field
+        class="mx-4"
           v-model="tutorial.password"
           :rules="[(v) => !!v || 'Нууц үгээ оруулна уу']"
           :type="'password'"
           label="Нууц үг"
           required
         ></v-text-field>
-        <div class=" tw-flex tw-justify-center">
-          <v-btn color="primary" class="login mt-3" type="submit">login</v-btn>
-        </div>
-        <p class="mt-3">{{ message }}</p>
+        <v-row justify="center" >
+          <v-col cols="auto">
+            <v-btn color="primary" class="login mt-3" type="submit">login</v-btn>
+          </v-col>
+        </v-row>
+        <v-row justify="center" >
+          <p class="mt-3">{{ message }}</p>
+        </v-row>
       </v-form>
     </div>
   </div>
@@ -51,7 +57,6 @@ export default {
       formData.append("password", this.tutorial.password);
 
       MacDataService.login(formData).then((result) => {
-        console.log("minii login", result.data);
         if (result.data.status === "failed") {
           this.message = "Нэвтрэх нэр эсвэл нууц үг буруу байна!";
         } else {

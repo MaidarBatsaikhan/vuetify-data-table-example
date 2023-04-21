@@ -1,11 +1,11 @@
 <template>
   <div class="popup" v-if="open">
-    <div class="popup-inner">
+    <v-progress-circular class="loader" v-show="circular" color="primary" indeterminate :size="70"></v-progress-circular>
+    <div class="popup-inner" >
       <div class="submit-form mt-3 mx-auto">
         <p class="headline">Add MAC address</p>
-
         <div>
-          <v-form ref="form" lazy-validation @submit="saveTutorial">
+          <v-form  @submit="saveTutorial" :disabled="circular">
             <v-text-field
               v-model="tutorial.title"
               :rules="[(v) => !!v || 'MAC address is required']"
@@ -19,14 +19,40 @@
               label="Description"
               required
             ></v-text-field>
-            <v-btn color="primary" class="mt-3" type="submit">Submit</v-btn>
-            <v-btn class="mt-3 ml-3" @click="$emit('close'), refresh()"
-              >Close</v-btn
-            >
+
+            <v-select
+            v-model="tutorial.type"
+              label="Choose a type"
+              :rules="[(v) => !!v || 'Type is required']"
+              :items="['Main', 'TEMP']"
+              required
+            ></v-select>
+
+            <v-text-field
+            v-show="tutorial.type == 'TEMP'"
+              v-model="tutorial.duration"
+              :rules="[(v) => !!v || 'Duration is required']"
+              label="Duration"
+              type="date"
+            ></v-text-field>
+
+            <v-row justify="center" >
+              <v-col cols="auto">
+                <v-btn color="primary" type="submit" :disabled="circular">
+                  Submit</v-btn>
+              </v-col>
+              <v-col cols="auto">
+                <v-btn @click="$emit('close'), refresh()"
+                  >Close</v-btn>
+              </v-col>
+            </v-row>
           </v-form>
-          <p v-for="mes in $store.state.message" :key="mes" class="mt-3">
-            {{ mes }}
-          </p>
+          <v-row justify="center" >
+            <p v-for="mes in $store.state.message" :key="mes" >
+              {{ mes }}
+            </p>
+
+          </v-row>
         </div>
 
         <!-- <div v-else>
@@ -58,21 +84,31 @@ export default {
   emits: ["close"],
   data() {
     return {
-      message: "",
       tutorial: {
         id: null,
         title: null,
-        description: "",
-        descr: "",
+        description: null,
+        type: null,
+        duration: null,
+        descr: null,
       },
+      message: "",
+      circular: false,
       submitted: false,
     };
   },
   methods: {
     saveTutorial() {
+      this.circular = true;
       var formData = new FormData();
-      formData.append("mac", this.tutorial.title);
-      formData.append("descr", this.tutorial.description);
+      if (this.tutorial.title && this.tutorial.description && this.tutorial.type) {
+        formData.append("mac", this.tutorial.title);
+        formData.append("descr", this.tutorial.description);
+        formData.append("device_status", this.tutorial.type);
+      }
+      if (this.tutorial.type == "TEMP") {
+        formData.append("expire_date", this.tutorial.duration);
+      }
 
       MacDataService.create(formData)
         .then((response) => {
@@ -88,10 +124,14 @@ export default {
             ];
             this.$store.commit("setmessage", this.message);
           }
+          // setTimeout(this.tutorial.circular = false, 4000);
+          this.circular = false;
           // this.submitted = true;
         })
         .catch((e) => {
           console.log(e);
+          this.$store.commit("setmessage", "Хүсэлт_амжилтгүй");
+          this.circular = false;
         });
     },
 
@@ -132,5 +172,9 @@ export default {
   position: relative;
   background-color: #fff;
   padding: 24px;
+}
+.loader {
+  position: absolute;
+  z-index: 100;
 }
 </style>
